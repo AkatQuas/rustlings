@@ -6,9 +6,8 @@
 // of "waiting..." and the program ends without timing out when running,
 // you've got it :)
 
-// I AM NOT DONE
-
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
@@ -16,17 +15,55 @@ struct JobStatus {
     jobs_completed: u32,
 }
 
-fn main() {
-    let status = Arc::new(JobStatus { jobs_completed: 0 });
+pub fn main() {
+    let status = Arc::new(Mutex::new(JobStatus { jobs_completed: 0 }));
+    // create one atomic reference,
+    // and use it for 10 times in one thread
     let status_shared = status.clone();
     thread::spawn(move || {
+        // status_shared moved into here
+        // use in loop
         for _ in 0..10 {
-            thread::sleep(Duration::from_millis(250));
-            status_shared.jobs_completed += 1;
+            thread::sleep(Duration::from_millis(260));
+            let mut job = status_shared.lock().unwrap();
+            job.jobs_completed += 1;
         }
+        // total waiting 2600 ms
     });
-    while status.jobs_completed < 10 {
+
+    // there will be 6 lines of "waiting..." (6 * 500 > 2600)
+    while status.lock().unwrap().jobs_completed < 10 {
         println!("waiting... ");
         thread::sleep(Duration::from_millis(500));
     }
+    println!(
+        "final job count. [jobs={}]",
+        status.lock().unwrap().jobs_completed
+    );
+}
+
+pub fn main_more() {
+    let status = Arc::new(Mutex::new(JobStatus { jobs_completed: 0 }));
+    for _ in 0..10 {
+        // create a shared atomic reference in each loop
+        let status_shared = Arc::clone(&status);
+        // create a thread to use the status_shared,
+        // so there will be 10 thread running
+        thread::spawn(move || {
+            // only status_shared moved into here
+            thread::sleep(Duration::from_millis(260));
+            let mut job = status_shared.lock().unwrap();
+            job.jobs_completed += 1;
+        });
+    }
+
+    // there will be 1 line of "waiting..."
+    while status.lock().unwrap().jobs_completed < 10 {
+        println!("waiting... ");
+        thread::sleep(Duration::from_millis(500));
+    }
+    println!(
+        "final job count. [jobs={}]",
+        status.lock().unwrap().jobs_completed
+    );
 }

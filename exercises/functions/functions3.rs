@@ -1,14 +1,13 @@
 // functions3.rs
 // Make me compile! Execute `rustlings hint functions3` for hints :)
 
-// I AM NOT DONE
-
 fn main() {
-    call_me();
+    call_me(10);
 }
 
 fn call_me(num: u32) {
+    // [open, not close)
     for i in 0..num {
-        println!("Ring! Call number {}", i + 1);
+        println!("Ring! Call number {}", i);
     }
 }
